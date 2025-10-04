@@ -456,16 +456,22 @@ check_possibilities_of_1:              ; Row checks
     cmp ecx, 0
     jne skip_row0
     call possibility1
+    cmp player_win, 1
+    je cpw_done
 skip_row0:
 
     cmp ecx, 3
     jne skip_row3
     call possibility1
+    cmp player_win, 1
+    je cpw_done
 skip_row3:
 
     cmp ecx, 6
     jne skip_row6
     call possibility1
+    cmp player_win, 1
+    je cpw_done
 skip_row6:
 
 
@@ -473,16 +479,22 @@ check_possibilities_of_2:              ; Column checks
     cmp ecx, 0
     jne skip_col0
     call possibility2
+    cmp player_win, 1
+    je cpw_done
 skip_col0:
 
     cmp ecx, 1
     jne skip_col1
     call possibility2
+    cmp player_win, 1
+    je cpw_done
 skip_col1:
 
     cmp ecx, 2
     jne skip_col2
     call possibility2
+    cmp player_win, 1
+    je cpw_done
 skip_col2:
 
 
@@ -490,6 +502,8 @@ check_possibilities_of_3:              ; Diagonal 1
     cmp ecx, 0
     jne skip_diag1
     call possibility3
+    cmp player_win, 1
+    je cpw_done
 skip_diag1:
 
 
@@ -497,6 +511,8 @@ check_possibilities_of_4:              ; Diagonal 2
     cmp ecx, 2
     jne skip_diag2
     call possibility4
+    cmp player_win, 1
+    je cpw_done
 skip_diag2:
 
     jmp end_block
@@ -591,6 +607,7 @@ end_block:
     cmp ecx, 9
     jl win_move        
 
+cpw_done:
 ret
 check_player_win ENDP
 
@@ -661,6 +678,8 @@ calculated_probability PROC
                 mov eax, col
                 mov temp, eax 
                 call add_to_right
+                cmp eax, 1
+                je cp_success
 
             skip_add_to_right:
             cmp col,2
@@ -668,6 +687,8 @@ calculated_probability PROC
                 mov eax, col
                 mov temp, eax 
                 call add_to_left
+                cmp eax, 1
+                je cp_success
 
             skip_add_to_left:
             cmp row,0
@@ -675,6 +696,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_bottom
+                cmp eax, 1
+                je cp_success
 
             skip_add_to_bottom:
             cmp row,2
@@ -682,6 +705,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_top
+                cmp eax, 1
+                je cp_success
 
             skip_add_to_top:
             cmp col,0
@@ -691,6 +716,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_diagonal1
+                cmp eax, 1
+                je cp_success
             
             skip_add_to_diagonal1:
             cmp row,0
@@ -700,6 +727,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp,eax 
                 call add_to_diagonal2
+                cmp eax, 1
+                je cp_success
 
             skip_add_to_diagonal2:
             jmp next_cell
@@ -872,10 +901,15 @@ d2_done:
 next_cell:
 inc ecx
 cmp ecx,9
-jl possibility
-mov eax,0
-mov computer_played,eax
-ret
+    jl possibility
+    mov eax,0
+    mov computer_played,eax
+    ret
+
+cp_success:
+    ; A move was just placed by one of add_* helpers
+    ; Return success to the caller immediately
+    ret
 
 
 calculated_probability ENDP
