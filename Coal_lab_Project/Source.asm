@@ -89,7 +89,7 @@ main_game_loop:
 no_block:
     call calculated_probability  ; returns 1 if move placed
     cmp eax, 1
-    jne after_computer_move
+    je after_computer_move
 
 after_computer_move:
     call check_computer_win
@@ -183,20 +183,29 @@ print_loop:
   cmp eax, -1
   jne print_value
 
-                            
-   mov edx, OFFSET dotMsg     ; if -1 ? print dot
-   call WriteString
-    jmp print_next
+  ; print dot for empty cell
+  push ecx
+  mov edx, OFFSET dotMsg
+  call WriteString
+  pop ecx
+  jmp print_next
 
 print_value:
-   call WriteDec
+  ; print cell value in EAX
+  push ecx
+  call WriteDec
+  pop ecx
 
 print_next:
+  ; print trailing space
+  push ecx
   mov edx, OFFSET spaceMsg
   call WriteString
+  pop ecx
+
   add esi, TYPE grid
- loop print_loop
- ret
+  loop print_loop
+  ret
 
 print_grid ENDP
 ;---------------------------------------
@@ -659,6 +668,8 @@ calculated_probability PROC
                 mov eax, col
                 mov temp, eax 
                 call add_to_right
+                cmp eax, 1
+                je calc_success
 
             skip_add_to_right:
             cmp col,2
@@ -666,6 +677,8 @@ calculated_probability PROC
                 mov eax, col
                 mov temp, eax 
                 call add_to_left
+                cmp eax, 1
+                je calc_success
 
             skip_add_to_left:
             cmp row,0
@@ -673,6 +686,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_bottom
+                cmp eax, 1
+                je calc_success
 
             skip_add_to_bottom:
             cmp row,2
@@ -680,6 +695,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_top
+                cmp eax, 1
+                je calc_success
 
             skip_add_to_top:
             cmp col,0
@@ -689,6 +706,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_diagonal1
+                cmp eax, 1
+                je calc_success
             
             skip_add_to_diagonal1:
             cmp row,0
@@ -698,9 +717,15 @@ calculated_probability PROC
                 mov eax, row
                 mov temp,eax 
                 call add_to_diagonal2
+                cmp eax, 1
+                je calc_success
 
             skip_add_to_diagonal2:
             jmp next_cell
+
+; A move was placed (EAX==1). Return immediately with success
+calc_success:
+            ret
 
 add_to_right:
         mov eax,temp
