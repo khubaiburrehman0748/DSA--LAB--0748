@@ -92,6 +92,9 @@ no_block:
     jne after_computer_move
 
 after_computer_move:
+    call check_computer_win
+    cmp computer_win, 1
+    je computer_wins_label
     mov eax,0
     mov computer_played,eax      ; reset flag
     call print_grid
@@ -125,12 +128,12 @@ game endp
 
 turn_1 PROC
 
-; generate random col (0–2)
+; generate random col (0â€“2)
 mov eax, 3
 call RandomRange
 mov col, eax
 
-; generate random row (0–2)
+; generate random row (0â€“2)
 mov eax, 3
 call RandomRange
 mov row, eax
@@ -215,6 +218,11 @@ human_input_loop:
     call ReadInt          ; input in EAX
 
     ; map 0..8 -> row,col
+    cmp eax, 0
+    jl human_move_invalid
+    cmp eax, 8
+    jg human_move_invalid
+
     mov ebx, 3
     xor edx, edx
     div ebx               ; quotient in EAX = row, remainder in EDX = col
@@ -268,16 +276,22 @@ check_possibilities_of_1:              ; Row checks
     cmp ecx, 0
     jne skip_row0
     call possibility1
+    cmp computer_win,1
+    je ccw_done
 skip_row0:
-
+    
     cmp ecx, 3
     jne skip_row3
     call possibility1
+    cmp computer_win,1
+    je ccw_done
 skip_row3:
 
     cmp ecx, 6
     jne skip_row6
     call possibility1
+    cmp computer_win,1
+    je ccw_done
 skip_row6:
 
 
@@ -285,16 +299,22 @@ check_possibilities_of_2:              ; Column checks
     cmp ecx, 0
     jne skip_col0
     call possibility2
+    cmp computer_win,1
+    je ccw_done
 skip_col0:
 
     cmp ecx, 1
     jne skip_col1
     call possibility2
+    cmp computer_win,1
+    je ccw_done
 skip_col1:
 
     cmp ecx, 2
     jne skip_col2
     call possibility2
+    cmp computer_win,1
+    je ccw_done
 skip_col2:
 
 
@@ -302,6 +322,8 @@ check_possibilities_of_3:              ; Diagonal 1
     cmp ecx, 0
     jne skip_diag1
     call possibility3
+    cmp computer_win,1
+    je ccw_done
 skip_diag1:
 
 
@@ -309,6 +331,8 @@ check_possibilities_of_4:              ; Diagonal 2
     cmp ecx, 2
     jne skip_diag2
     call possibility4
+    cmp computer_win,1
+    je ccw_done
 skip_diag2:
 
     jmp end_block
@@ -405,6 +429,7 @@ end_block:
     mov eax,0
     mov computer_win,eax
 
+ccw_done:
 ret
 check_computer_win ENDP
 
