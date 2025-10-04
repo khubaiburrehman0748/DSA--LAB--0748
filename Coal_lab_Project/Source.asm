@@ -14,6 +14,9 @@ enter_draw BYTE "It's a Draw",0
 computer_win dword 0
 player_win dword 0
 computer_played dword 0
+computer_grid byte "Computer's Grid:",0
+player_grid byte "Player's Grid:",0
+prompt byte "Do you want to play again? (0 for yes | 1 for no ) : ",0
 
 
 grid sdword 9 dup(-1)      
@@ -63,6 +66,9 @@ main_game_loop:
 
     ; ----- Human Turn -----
     call human_move
+    mov edx, OFFSET player_grid
+    call WriteString
+    call crlf
     call print_grid
     call check_player_win
     cmp player_win, 1
@@ -81,15 +87,17 @@ main_game_loop:
 
     ; ----- Block human or calculated move -----
     call block_human_win         ; returns 1 if move placed
-    cmp eax, 1
+    cmp computer_played,1
     jne no_block                  ; if no move, go to calculated probability
 
     jmp after_computer_move       ; already moved
 
 no_block:
     call calculated_probability  ; returns 1 if move placed
-    cmp eax, 1
-    jne after_computer_move
+    cmp computer_played,1
+    je after_computer_move
+    call turn_1
+    jmp after_computer_move
 
 after_computer_move:
     call check_computer_win
@@ -97,6 +105,9 @@ after_computer_move:
     je computer_wins_label
     mov eax,0
     mov computer_played,eax      ; reset flag
+    mov edx, OFFSET computer_grid
+    call WriteString
+    call crlf
     call print_grid
     inc number_of_turns
     cmp number_of_turns, 9
@@ -119,6 +130,15 @@ draw_label:
     call WriteString
 
 end_game:
+    mov eax,0
+    call crlf
+    mov edx,OFFSET prompt
+    call WriteString
+    call readint
+    cmp eax,0
+    jne end_full_game
+    call game
+    end_full_game:
     exit
 
 game endp
@@ -175,28 +195,41 @@ turn_1 ENDP
 
 print_grid PROC
 
-mov ecx, 9               ; loop 9 cells
 mov esi, OFFSET grid
+mov ecx, 0          ; cell counter 0..8
 
 print_loop:
-  mov eax, [esi]           ; load cell value
-  cmp eax, -1
-  jne print_value
-
-                            
-   mov edx, OFFSET dotMsg     ; if -1 ? print dot
-   call WriteString
+    mov eax, [esi]
+    cmp eax, -1
+    jne print_value
+    mov edx, OFFSET dotMsg
+    call WriteString
     jmp print_next
 
 print_value:
-   call WriteDec
+    mov edx, eax
+    call WriteDec
 
 print_next:
-  mov edx, OFFSET spaceMsg
-  call WriteString
-  add esi, TYPE grid
- loop print_loop
- ret
+    add esi, 4        ; next cell
+    inc ecx
+    mov edx, OFFSET spaceMsg
+    call WriteString
+    mov eax, ecx
+    mov edx, eax
+    ; print newline every 3 cells
+    mov eax, ecx
+    mov ebx, 3
+    xor edx, edx
+    div ebx
+    cmp edx, 0
+    jne skip_crlf
+    call crlf
+skip_crlf:
+    cmp ecx, 9
+    jl print_loop
+
+    ret
 
 print_grid ENDP
 ;---------------------------------------
@@ -659,6 +692,9 @@ calculated_probability PROC
                 mov eax, col
                 mov temp, eax 
                 call add_to_right
+                cmp eax,1
+                je cal_success
+                    
 
             skip_add_to_right:
             cmp col,2
@@ -666,6 +702,8 @@ calculated_probability PROC
                 mov eax, col
                 mov temp, eax 
                 call add_to_left
+                cmp eax,1
+                je cal_success
 
             skip_add_to_left:
             cmp row,0
@@ -673,6 +711,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_bottom
+                cmp eax,1
+                je cal_success
 
             skip_add_to_bottom:
             cmp row,2
@@ -680,6 +720,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_top
+                cmp eax,1
+                je cal_success
 
             skip_add_to_top:
             cmp col,0
@@ -689,6 +731,8 @@ calculated_probability PROC
                 mov eax, row
                 mov temp, eax
                 call add_to_diagonal1
+                cmp eax,1
+                je cal_success
             
             skip_add_to_diagonal1:
             cmp row,0
@@ -698,10 +742,14 @@ calculated_probability PROC
                 mov eax, row
                 mov temp,eax 
                 call add_to_diagonal2
+                cmp eax,1
+                je cal_success
 
             skip_add_to_diagonal2:
             jmp next_cell
 
+            cal_success:
+                    ret
 add_to_right:
         mov eax,temp
    right_loop:
@@ -900,16 +948,25 @@ check_possibilities_of_1:              ; Row checks
     cmp ecx, 0
     jne skip_row0
     call possibility1
+    cmp computer_played,1
+    je end_block_success
+
 skip_row0:
 
     cmp ecx, 3
     jne skip_row3
     call possibility1
+    cmp computer_played,1
+    je end_block_success
+
 skip_row3:
 
     cmp ecx, 6
     jne skip_row6
     call possibility1
+    cmp computer_played,1
+    je end_block_success
+
 skip_row6:
 
 
@@ -917,16 +974,25 @@ check_possibilities_of_2:              ; Column checks
     cmp ecx, 0
     jne skip_col0
     call possibility2
+    cmp computer_played,1
+    je end_block_success
+
 skip_col0:
 
     cmp ecx, 1
     jne skip_col1
     call possibility2
+    cmp computer_played,1
+    je end_block_success
+
 skip_col1:
 
     cmp ecx, 2
     jne skip_col2
     call possibility2
+    cmp computer_played,1
+    je end_block_success
+
 skip_col2:
 
 
@@ -934,6 +1000,9 @@ check_possibilities_of_3:              ; Diagonal 1
     cmp ecx, 0
     jne skip_diag1
     call possibility3
+    cmp computer_played,1
+    je end_block_success
+
 skip_diag1:
 
 
@@ -941,10 +1010,15 @@ check_possibilities_of_4:              ; Diagonal 2
     cmp ecx, 2
     jne skip_diag2
     call possibility4
+    cmp computer_played,1
+    je end_block_success
+
 skip_diag2:
 
     jmp end_block
 
+end_block_success:
+    ret
 
 possibility1:                         ; check row (ecx = 0,3,6)
     mov row, ecx
@@ -1138,16 +1212,25 @@ check_possibilities_of_1:              ; Row checks
     cmp ecx, 0
     jne skip_row0
     call possibility1
+    cmp computer_played,1
+    je end_win_success
+
 skip_row0:
 
     cmp ecx, 3
     jne skip_row3
     call possibility1
+    cmp computer_played,1
+    je end_win_success
+
 skip_row3:
 
     cmp ecx, 6
     jne skip_row6
     call possibility1
+    cmp computer_played,1
+    je end_win_success
+
 skip_row6:
 
 
@@ -1155,16 +1238,25 @@ check_possibilities_of_2:              ; Column checks
     cmp ecx, 0
     jne skip_col0
     call possibility2
+    cmp computer_played,1
+    je end_win_success
+
 skip_col0:
 
     cmp ecx, 1
     jne skip_col1
     call possibility2
+    cmp computer_played,1
+    je end_win_success
+
 skip_col1:
 
     cmp ecx, 2
     jne skip_col2
     call possibility2
+    cmp computer_played,1
+    je end_win_success
+
 skip_col2:
 
 
@@ -1172,6 +1264,9 @@ check_possibilities_of_3:              ; Diagonal 1
     cmp ecx, 0
     jne skip_diag1
     call possibility3
+    cmp computer_played,1
+    je end_win_success
+
 skip_diag1:
 
 
@@ -1179,10 +1274,15 @@ check_possibilities_of_4:              ; Diagonal 2
     cmp ecx, 2
     jne skip_diag2
     call possibility4
+    cmp computer_played,1
+    je end_win_success
+
 skip_diag2:
 
     jmp end_block
 
+end_win_success:
+    ret
 
 possibility1:                         ; check row (ecx = 0,3,6)
     mov row, ecx
